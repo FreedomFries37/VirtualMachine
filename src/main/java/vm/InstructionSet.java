@@ -8,6 +8,16 @@ public enum InstructionSet{
     read(0x5),
     clrr(0x6),
     
+    band(0x7), //bitwise and
+    borr(0x8), //bitwise or
+    bnot(0x9), //bitwise not
+    blef(0xa), //bitwise shiftleft
+    brgt(0xb), //bitwise shiftright
+    
+    flpn(0xc), //load method variable number
+    freg(0xd), //get the register number of the frame
+    
+    rtrn(0xe), //return whats in the stack
     
     ifzj(0x10),
     ifgj(0x11),
@@ -18,7 +28,16 @@ public enum InstructionSet{
     iadd(0x1003),
     isub(0x1004),
     idiv(0x1005),
-    imul(0x1006);
+    imul(0x1006),
+    
+    ccre(0x1001),
+    cred(0x1002),
+    cadd(0x1003),
+    csub(0x1004),
+    cdiv(0x1005),
+    cmul(0x1006)
+    
+    ;
     
     
     
