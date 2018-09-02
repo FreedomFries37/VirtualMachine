@@ -4,4 +4,9 @@ import java.util.Stack;
 
 public interface IExecutableFrameStackObject<T extends IFrameStackObject> extends IFrameStackObject {
     T getValue();
+    
+    @Override
+    default boolean isRecursive() {
+        return true;
+    }
 }
