@@ -2,10 +2,10 @@ package vm.vm_objects;
 
 import vm.VirtualMachine;
 import vm.vm_modules.InstructionHandler;
-import vm.vm_modules.InstructionInfo;
+import vm.parts.InstructionInfo;
 import vm.vm_objects.frame_objects.IFrameStackObject;
 import vm.vm_objects.frame_objects.IPrimitive;
-import vm.vm_objects.frame_objects.primitives.VM_pointer;
+import vm.vm_objects.frame_objects.primitives.VM_void;
 
 import java.util.HashMap;
 import java.util.Stack;
@@ -52,17 +52,18 @@ public class Frame {
         return false;
     }
     
-    public boolean plantData(IPrimitive... primitives){
+    public boolean plantData(IPrimitive[] primitives, int[] registers){
+        if(primitives.length != registers.length) return false;
         int totalSize = 0;
         for (IPrimitive primitive : primitives) {
             totalSize += primitive.getSize();
         }
         boolean success = plantData(totalSize);
         if(success) {
-            int spaceUsed = 0;
+            int index = 0;
             for (IPrimitive primitive : primitives) {
-                passThroughs.put(registerNum + spaceUsed, primitive);
-                spaceUsed = primitive.getSize();
+                passThroughs.put(index, primitive.interpretFromRegister(registers[index], vm));
+                index++;
             }
         }
         return success;
@@ -88,5 +89,7 @@ public class Frame {
         return size;
     }
     
-    
+    public IPrimitive getPassThrough(int index){
+        return passThroughs.getOrDefault(index, new VM_void());
+    }
 }

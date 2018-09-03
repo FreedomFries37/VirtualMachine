@@ -11,13 +11,14 @@ public enum InstructionSet{
     band(0x7), //bitwise and
     borr(0x8), //bitwise or
     bnot(0x9), //bitwise not
-    blef(0xa), //bitwise shiftleft
-    brgt(0xb), //bitwise shiftright
+    
+    ptrd(0xa), //read pointer, first taking in a type to create from the stack, then taking a pointer
     
     flpn(0xc), //load method variable number
     freg(0xd), //get the register number of the frame
     
-    rtrn(0xe), //return whats in the stack
+    stpt(0xe), //smart frame based pointer
+    rtrn(0xf), //return whats in the stack if input is 0, returns a VM_void otherwise
     
     ifzj(0x10),
     ifgj(0x11),
@@ -30,12 +31,12 @@ public enum InstructionSet{
     idiv(0x1005),
     imul(0x1006),
     
-    ccre(0x1001),
-    cred(0x1002),
-    cadd(0x1003),
-    csub(0x1004),
-    cdiv(0x1005),
-    cmul(0x1006)
+    ccre(0x1101),
+    cred(0x1102),
+    cadd(0x1103),
+    csub(0x1104),
+    cdiv(0x1105),
+    cmul(0x1106)
     
     ;
     

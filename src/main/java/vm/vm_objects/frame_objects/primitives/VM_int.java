@@ -80,6 +80,11 @@ public class VM_int implements IPrimitive<Integer>, VM_Number {
     }
     
     @Override
+    public double doubleValue() {
+        return (double) data;
+    }
+    
+    @Override
     public int getSize() {
         return 4;
     }

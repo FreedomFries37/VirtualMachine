@@ -1,11 +1,14 @@
 package vm.vm_modules;
 
 import vm.VirtualMachine;
+import vm.parts.ExecutableInstruction;
+import vm.parts.InstructionInfo;
 import vm.vm_objects.Frame;
 import vm.vm_objects.frame_objects.IFrameStackObject;
 import vm.vm_objects.frame_objects.IPrimitive;
 import vm.vm_objects.frame_objects.primitives.*;
 
+import java.util.HashMap;
 import java.util.Scanner;
 import java.util.Stack;
 
@@ -13,12 +16,13 @@ public class InstructionHandler {
     
     
     
-    static boolean DEBUG = false;
+    static boolean DEBUG = true;
     
     private VirtualMachine vm;
     private Frame frame;
     private InstructionInfo[] instructions;
     private int currentInstruction;
+    private HashMap<Integer, Integer> registerAndSizeMap;
     
     {
         currentInstruction = 0;
@@ -28,6 +32,7 @@ public class InstructionHandler {
         this.vm = vm;
         this.instructions = instructions;
         this.frame = frame;
+        registerAndSizeMap = new HashMap<>();
     }
     
     public interface Instruction{
@@ -53,17 +58,31 @@ public class InstructionHandler {
                     IPrimitive primitive = (IPrimitive) stackObject;
                     primitive.writeToMemory(inData[0], vm);
                 }
-                return new VM_pointer(inData[0]);
+                return new VM_void();
             }
         };
         
         Instruction execute = new Instruction() {
             @Override
             public IFrameStackObject execute(Stack<IFrameStackObject> stack, int[] inData) throws IncorrectNumberOfRegistersException {
-                if(inData.length != 1) throw new IncorrectNumberOfRegistersException(1, inData.length);
+                if(inData.length != 0) throw new IncorrectNumberOfRegistersException(0, inData.length);
                 ExecutableInstruction instruction = (ExecutableInstruction) instructions[currentInstruction];
-                Frame f = new Frame(vm, instruction.instructions);
-                return f.execute();
+                if(stack.size() < instruction.passThroughs()) return null;
+                
+                int added = 0;
+                int[] registers = new int[instruction.passThroughs()];
+                while(added < instruction.passThroughs() && stack.peek() instanceof VM_pointer){
+                    VM_pointer pointer = (VM_pointer) stack.pop();
+                    registers[added++] = pointer.getData();
+                }
+                
+                
+                boolean succ = vm.getFrameCreator().createFrame(instruction.getMethod(), registers);
+                if(succ) {
+                    
+                    stack.push(((VM_return) vm.getFrames().pop().execute()).getObject());
+                }
+                return new VM_void();
             }
         };
         
@@ -71,8 +90,8 @@ public class InstructionHandler {
             @Override
             public IFrameStackObject execute(Stack<IFrameStackObject> stack, int[] inData) throws IncorrectNumberOfRegistersException {
                 if(inData.length != 0) throw new IncorrectNumberOfRegistersException(0, inData.length);
-                if(stack.peek() instanceof IPrimitive) System.out.println(((IPrimitive) stack.pop()).asString());
-                else System.out.println(stack.pop());
+                if(stack.peek() instanceof IPrimitive) System.out.print(((IPrimitive) stack.pop()).asString());
+                else System.out.print(stack.pop());
                 return new VM_void();
             }
         };
@@ -88,7 +107,7 @@ public class InstructionHandler {
                     new VM_char().writeToMemory(c, inData[0] + index, vm);
                     index++;
                 }
-                return new VM_pointer(inData[0]);
+                return new VM_void();
             }
         };
     
@@ -104,6 +123,70 @@ public class InstructionHandler {
                     vm.setRegister(inData[0] + i, 0);
                 }
                 return new VM_void();
+            }
+        };
+    
+    
+        Instruction loadVar = new Instruction() {
+            @Override
+            public IFrameStackObject execute(Stack<IFrameStackObject> stack, int[] inData) throws IncorrectNumberOfRegistersException {
+                if(inData.length != 1) throw new IncorrectNumberOfRegistersException(1, inData.length);
+                IPrimitive primitive = frame.getPassThrough(inData[0]);
+                if(!(primitive instanceof VM_void)){
+                    stack.push(primitive);
+                }
+                return new VM_void();
+            }
+        };
+    
+        Instruction smartPointer = new Instruction() {
+            @Override
+            public IFrameStackObject execute(Stack<IFrameStackObject> stack, int[] inData) throws IncorrectNumberOfRegistersException {
+                if(inData.length != 0) throw new IncorrectNumberOfRegistersException(2, inData.length);
+                if(!(stack.peek() instanceof IPrimitive)) return new VM_void();
+                IPrimitive p = (IPrimitive) stack.pop();
+                int size = p.getSize();
+                for (int i = frame.getRegisterNum(); i < vm.getSize(); i++) {
+                    if(vm.getRegister(i) == '\0'){
+                        boolean spaceFound = true;
+                        for (int i1 = 1; i1 < size && i < vm.getSize(); i1++) {
+                            if(vm.getRegister(i + i1) != '\0'){
+                                spaceFound = false;
+                                break;
+                            }
+                        }
+                        if(spaceFound){
+                            p.writeToMemory(i,vm);
+                            registerAndSizeMap.put(i, size);
+                            stack.push(new VM_pointer(i));
+                            //vm.memoryDump();
+                            return new VM_void();
+                        }
+                    }
+                }
+                return new VM_void();
+            }
+        };
+    
+        Instruction _return = new Instruction() {
+            @Override
+            public IFrameStackObject execute(Stack<IFrameStackObject> stack, int[] inData) throws IncorrectNumberOfRegistersException {
+                if(inData.length != 1) throw new IncorrectNumberOfRegistersException(1, inData.length);
+                IFrameStackObject object = new VM_void();
+                if(inData[0] == 0){
+                    if(stack.size() == 0) return null;
+                    object = stack.pop();
+                }
+                
+                stack.clear();
+                for (Integer register : registerAndSizeMap.keySet()) {
+                    int size = registerAndSizeMap.get(register);
+                    for (int i = 0; i < size; i++) {
+                        vm.setRegister(register + i, 0);
+                    }
+                }
+                return new VM_return(object);
+                
             }
         };
         
@@ -200,6 +283,36 @@ public class InstructionHandler {
                 return new VM_void();
             }
         };
+        Instruction intDiv = new Instruction() {
+            @Override
+            public IFrameStackObject execute(Stack<IFrameStackObject> stack, int[] inData) throws IncorrectNumberOfRegistersException {
+                if(inData.length != 0) throw new IncorrectNumberOfRegistersException(0, inData.length);
+                if(stack.size() < 2) return new VM_void();
+                if(stack.peek() instanceof VM_int){
+                    VM_int a = (VM_int) stack.pop();
+                    if(stack.peek() instanceof  VM_int){
+                        VM_int b = (VM_int) stack.pop();
+                        stack.push(new VM_int(a.getData() / b.getData()));
+                    }
+                }
+                return new VM_void();
+            }
+        };
+        Instruction intMult = new Instruction() {
+            @Override
+            public IFrameStackObject execute(Stack<IFrameStackObject> stack, int[] inData) throws IncorrectNumberOfRegistersException {
+                if(inData.length != 0) throw new IncorrectNumberOfRegistersException(0, inData.length);
+                if(stack.size() < 2) return new VM_void();
+                if(stack.peek() instanceof VM_int){
+                    VM_int a = (VM_int) stack.pop();
+                    if(stack.peek() instanceof  VM_int){
+                        VM_int b = (VM_int) stack.pop();
+                        stack.push(new VM_int(a.getData() * b.getData()));
+                    }
+                }
+                return new VM_void();
+            }
+        };
     }
     
     static class IncorrectNumberOfRegistersException extends Exception{
@@ -219,6 +332,11 @@ public class InstructionHandler {
             case 0x4: return instructions.print;
             case 0x5: return instructions.read;
             case 0x6: return instructions.clear;
+    
+            case 0xc: return instructions.loadVar;
+            
+            case 0xe: return instructions.smartPointer;
+            case 0xf: return instructions._return;
             
             case 0x10: return instructions.ifZeroJump;
             case 0x11: return instructions.ifGreaterJump;
@@ -228,6 +346,8 @@ public class InstructionHandler {
             case 0x1002: return instructions.intRead;
             case 0x1003: return instructions.intAdd;
             case 0x1004: return instructions.intSubtract;
+            case 0x1005: return instructions.intDiv;
+            case 0x1006: return instructions.intMult;
             
         }
     }
@@ -248,12 +368,12 @@ public class InstructionHandler {
             if(DEBUG) System.out.println(toString());
             IFrameStackObject object = doInstruction(instructions[currentInstruction].opCode,
                     instructions[currentInstruction].data);
-            /*
-            if(!object.getClass().equals(VM_void.class)){
+            
+            if(object instanceof VM_return){
                 System.out.println(toString());
                 return object;
             }
-            */
+            
         }
         if(DEBUG) System.out.println(toString());
         return new VM_void();

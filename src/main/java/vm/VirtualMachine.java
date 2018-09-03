@@ -1,6 +1,7 @@
 package vm;
 
 import vm.vm_modules.FrameCreator;
+import vm.vm_modules.MethodTracker;
 import vm.vm_objects.Frame;
 
 import java.util.Collection;
@@ -11,11 +12,15 @@ public class VirtualMachine {
     private char[] registers;
     private Stack<Frame> frames;
     private FrameCreator frameCreator;
+    private MethodTracker methodTracker;
+    private long starttime;
     
-    public VirtualMachine(int numBytes) {
+    VirtualMachine(int numBytes) {
         registers = new char[numBytes];
-        frames = new Stack<Frame>();
+        frames = new Stack<>();
         frameCreator = new FrameCreator(this);
+        methodTracker = new MethodTracker();
+        starttime = System.currentTimeMillis();
     }
     
     /**
@@ -62,6 +67,10 @@ public class VirtualMachine {
         return frameCreator;
     }
     
+    public MethodTracker getMethodTracker() {
+        return methodTracker;
+    }
+    
     public void execute(){
         frames.pop().execute();
     }
@@ -72,5 +81,29 @@ public class VirtualMachine {
             while (s.length() < 8) s.insert(0, '0');
             System.out.printf("[reg %d] %s\n", i, s.toString());
         }
+    }
+    
+    public double memoryUsage(){
+        double filled = 0;
+        for (char register : registers) {
+            if(register != '\0') filled++;
+        }
+        
+        return filled/registers.length;
+    }
+    
+    public void dumpInformation(){
+        System.out.println(
+                "VM size: " + getSize() + " bytes"
+        );
+        System.out.println("Usage: " + String.format("%f", memoryUsage()*100) + "%");
+        System.out.println("Uptime: " + String.format("%d ms", System.currentTimeMillis() - starttime));
+    
+    }
+    
+    public void runMethod(String name, int... registers){
+        Method m = methodTracker.getMethod(name).getRef();
+        if(m == null) return;
+        if(frameCreator.createFrame(m, registers)) execute();
     }
 }

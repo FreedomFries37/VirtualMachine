@@ -1,10 +1,10 @@
-package vm.vm_modules;
+package vm.parts;
 
 import vm.InstructionSet;
 
 public class InstructionInfo {
-    int opCode;
-    int[] data;
+    public final int opCode;
+    public final int[] data;
     
     
     public InstructionInfo(int opCode, int... data) {
