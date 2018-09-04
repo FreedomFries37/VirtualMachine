@@ -1,6 +1,7 @@
 package vm;
 
 import vm.vm_modules.FrameCreator;
+import vm.vm_modules.MemoryManager;
 import vm.vm_modules.MethodTracker;
 import vm.vm_objects.Frame;
 
@@ -13,6 +14,7 @@ public class VirtualMachine {
     private Stack<Frame> frames;
     private FrameCreator frameCreator;
     private MethodTracker methodTracker;
+    private MemoryManager memoryManager;
     private long starttime;
     
     VirtualMachine(int numBytes) {
@@ -20,6 +22,7 @@ public class VirtualMachine {
         frames = new Stack<>();
         frameCreator = new FrameCreator(this);
         methodTracker = new MethodTracker();
+        memoryManager = new MemoryManager(this);
         starttime = System.currentTimeMillis();
     }
     
@@ -71,6 +74,10 @@ public class VirtualMachine {
         return methodTracker;
     }
     
+    public MemoryManager getMemoryManager() {
+        return memoryManager;
+    }
+    
     public void execute(){
         frames.pop().execute();
     }
@@ -97,6 +104,7 @@ public class VirtualMachine {
                 "VM size: " + getSize() + " bytes"
         );
         System.out.println("Usage: " + String.format("%f", memoryUsage()*100) + "%");
+        System.out.println("Allocated: " + String.format("%f", memoryManager.getMemoryAllocated()*100) + "%");
         System.out.println("Uptime: " + String.format("%d ms", System.currentTimeMillis() - starttime));
     
     }

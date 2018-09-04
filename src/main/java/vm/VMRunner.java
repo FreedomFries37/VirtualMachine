@@ -5,7 +5,7 @@ import java.util.Scanner;
 
 public class VMRunner {
     
-    public static void run(VirtualMachine virtualMachine){
+    private static void run(VirtualMachine virtualMachine){
         Scanner scanner = new Scanner(System.in);
         
         while (true){

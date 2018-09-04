@@ -146,24 +146,14 @@ public class InstructionHandler {
                 if(!(stack.peek() instanceof IPrimitive)) return new VM_void();
                 IPrimitive p = (IPrimitive) stack.pop();
                 int size = p.getSize();
-                for (int i = frame.getRegisterNum(); i < vm.getSize(); i++) {
-                    if(vm.getRegister(i) == '\0'){
-                        boolean spaceFound = true;
-                        for (int i1 = 1; i1 < size && i < vm.getSize(); i1++) {
-                            if(vm.getRegister(i + i1) != '\0'){
-                                spaceFound = false;
-                                break;
-                            }
-                        }
-                        if(spaceFound){
-                            p.writeToMemory(i,vm);
-                            registerAndSizeMap.put(i, size);
-                            stack.push(new VM_pointer(i));
-                            //vm.memoryDump();
-                            return new VM_void();
-                        }
-                    }
+                int register = vm.getMemoryManager().findSpace(size);
+                if(register > -1){
+                            p.writeToMemory(register,vm);
+                            registerAndSizeMap.put(register, size);
+                            stack.push(new VM_pointer(register));
+                            //vm.memoryDump()
                 }
+                
                 return new VM_void();
             }
         };
@@ -229,6 +219,52 @@ public class InstructionHandler {
                         currentInstruction = inData[0] - 1;
                     }
                 }
+                return new VM_void();
+            }
+        };
+    
+        Instruction malloc = new Instruction() {
+            @Override
+            public IFrameStackObject execute(Stack<IFrameStackObject> stack, int[] inData) throws IncorrectNumberOfRegistersException {
+                if(inData.length != 0) throw new IncorrectNumberOfRegistersException(0, inData.length);
+                IFrameStackObject object = stack.pop();
+                if(object instanceof VM_int){
+                    int size = ((VM_int) object).getData();
+                    stack.push(vm.getMemoryManager().malloc(size));
+                }
+                return new VM_void();
+            }
+        };
+    
+        Instruction calloc = new Instruction() {
+            @Override
+            public IFrameStackObject execute(Stack<IFrameStackObject> stack, int[] inData) throws IncorrectNumberOfRegistersException {
+                if(inData.length != 0) throw new IncorrectNumberOfRegistersException(0, inData.length);
+                if(stack.size() < 2) return null;
+                int size, count;
+                IFrameStackObject object = stack.pop();
+                if(object instanceof VM_int){
+                    size = ((VM_int) object).getData();
+                }else return null;
+                object = stack.pop();
+                if(object instanceof VM_int){
+                    count = ((VM_int) object).getData();
+                }else return null;
+                stack.push(vm.getMemoryManager().calloc(size, count));
+                return new VM_void();
+            }
+        };
+    
+        Instruction free = new Instruction() {
+            @Override
+            public IFrameStackObject execute(Stack<IFrameStackObject> stack, int[] inData) throws IncorrectNumberOfRegistersException {
+                if(inData.length != 0) throw new IncorrectNumberOfRegistersException(0, inData.length);
+                if(stack.size() < 1) return null;
+                IFrameStackObject object = stack.pop();
+                if(object instanceof VM_pointer){
+                    VM_pointer ptr = (VM_pointer) object;
+                    vm.getMemoryManager().free(ptr);
+                }else return null;
                 return new VM_void();
             }
         };
@@ -341,6 +377,10 @@ public class InstructionHandler {
             case 0x10: return instructions.ifZeroJump;
             case 0x11: return instructions.ifGreaterJump;
             case 0x12: return instructions.ifLessJump;
+            
+            case 0x20: return instructions.malloc;
+            case 0x21: return instructions.calloc;
+            case 0x22: return instructions.free;
             
             case 0x1001: return instructions.intCreate;
             case 0x1002: return instructions.intRead;

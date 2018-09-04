@@ -12,4 +12,10 @@ public class VM_pointer extends VM_int {
                 "data=" + getData() +
                 '}';
     }
+    
+    @Override
+    public boolean equals(Object obj) {
+        if(obj instanceof VM_pointer) return ((VM_pointer) obj).getData() == getData();
+        return false;
+    }
 }

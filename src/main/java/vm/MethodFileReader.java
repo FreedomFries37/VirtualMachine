@@ -1,5 +1,6 @@
 package vm;
 
+import vm.parts.ExecutableInstruction;
 import vm.parts.InstructionInfo;
 import vm.vm_objects.frame_objects.IPrimitive;
 
@@ -18,10 +19,12 @@ public class MethodFileReader {
     
     private HashMap<String, Method> nameToMethodMap;
     private String path;
+    public final VirtualMachine vm;
     
-    public MethodFileReader(String path) {
+    public MethodFileReader(String path, VirtualMachine vm) {
         this.path = path;
         nameToMethodMap = new HashMap<>();
+        this.vm = vm;
     }
     
     public HashMap<String, Method> getNameToMethodMap() {
@@ -30,6 +33,7 @@ public class MethodFileReader {
     
     public boolean createMethodMap(){
         File f = new File(path);
+        
         
         if(!f.exists()) return false;
         try {
@@ -45,9 +49,19 @@ public class MethodFileReader {
             String current = "";
             
             for (String s : list) {
+                String[] args = s.split("\\s+");
                 if(inMethod){
                     if(s.matches("\\w+")){
-                    
+                        if(s.startsWith("exec")){
+                            info.add(new ExecutableInstruction(current, vm));
+                        }else{
+                            String command = args[0];
+                            LinkedList<Integer> ints = new LinkedList<>();
+                            for (int i = 1; i < args.length; i++) {
+                                ints.addLast(Integer.parseInt(args[i]));
+                            }
+                            info.add(new InstructionInfo(command, ints));
+                        }
                     }else{
                         inMethod = false;
                         nameToMethodMap.replace(current, new Method(
